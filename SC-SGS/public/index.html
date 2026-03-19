@@ -1,0 +1,1590 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>STARCRAFT × SANGUOSHA</title>
+<style>
+/* === RESET & BASE === */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { width: 100%; height: 100%; overflow: hidden; }
+body {
+  font-family: 'Courier New', 'Consolas', monospace;
+  background: #0a0a1a;
+  color: #e0e0e0;
+}
+
+/* === CSS VARIABLES === */
+:root {
+  --bg: #0a0a1a;
+  --primary: #00ccff;
+  --secondary: #ff6600;
+  --accent: #9900ff;
+  --danger: #ff3333;
+  --success: #00ff66;
+  --text: #e0e0e0;
+  --terran: #ff6600;
+  --protoss: #00ccff;
+  --zerg: #9900ff;
+}
+
+/* === STARFIELD ANIMATION === */
+#starfield {
+  position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+  z-index: 0; overflow: hidden; pointer-events: none;
+}
+#starfield .star {
+  position: absolute; background: #fff; border-radius: 50%;
+  animation: twinkle linear infinite;
+}
+@keyframes twinkle {
+  0%, 100% { opacity: 0.2; }
+  50% { opacity: 1; }
+}
+#starfield .star:nth-child(odd) { animation-duration: 3s; }
+#starfield .star:nth-child(even) { animation-duration: 5s; }
+.screen, .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; display: none; }
+.screen.active { display: flex; }
+.modal.active { display: flex; z-index: 100; background: rgba(0,0,0,0.85); }
+.modal { align-items: center; justify-content: center; }
+
+/* === COMMON COMPONENTS === */
+button {
+  font-family: inherit; cursor: pointer; border: 1px solid var(--primary);
+  background: rgba(0,204,255,0.1); color: var(--primary); padding: 10px 24px;
+  font-size: 14px; text-transform: uppercase; letter-spacing: 2px;
+  transition: all 0.3s; border-radius: 4px; position: relative; overflow: hidden;
+}
+button:hover { background: rgba(0,204,255,0.25); box-shadow: 0 0 15px rgba(0,204,255,0.3); }
+button:active { transform: scale(0.97); }
+button.secondary { border-color: var(--secondary); color: var(--secondary); background: rgba(255,102,0,0.1); }
+button.secondary:hover { background: rgba(255,102,0,0.25); box-shadow: 0 0 15px rgba(255,102,0,0.3); }
+button.danger { border-color: var(--danger); color: var(--danger); background: rgba(255,51,51,0.1); }
+button.danger:hover { background: rgba(255,51,51,0.25); }
+button.success { border-color: var(--success); color: var(--success); background: rgba(0,255,102,0.1); }
+button.success:hover { background: rgba(0,255,102,0.25); }
+button:disabled { opacity: 0.4; cursor: not-allowed; }
+input, select {
+  font-family: inherit; background: rgba(255,255,255,0.05); border: 1px solid rgba(0,204,255,0.3);
+  color: var(--text); padding: 10px 16px; font-size: 14px; border-radius: 4px;
+  outline: none; transition: border-color 0.3s;
+}
+input:focus { border-color: var(--primary); box-shadow: 0 0 10px rgba(0,204,255,0.2); }
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: rgba(255,255,255,0.02); }
+::-webkit-scrollbar-thumb { background: rgba(0,204,255,0.3); border-radius: 3px; }
+.glow-border {
+  box-shadow: 0 0 5px rgba(0,204,255,0.3), inset 0 0 5px rgba(0,204,255,0.1);
+  border: 1px solid rgba(0,204,255,0.4);
+}
+h1, h2, h3 { color: var(--primary); text-shadow: 0 0 10px rgba(0,204,255,0.5); }
+.neon-text { text-shadow: 0 0 10px currentColor, 0 0 20px currentColor; }
+
+/* === LOGIN SCREEN === */
+#loginScreen {
+  flex-direction: column; align-items: center; justify-content: center; gap: 20px;
+}
+.login-title {
+  font-size: 48px; font-weight: bold; color: var(--primary);
+  text-shadow: 0 0 20px rgba(0,204,255,0.6), 0 0 40px rgba(0,204,255,0.3);
+  letter-spacing: 6px; margin-bottom: 10px; text-align: center;
+}
+.login-subtitle { font-size: 16px; color: var(--secondary); letter-spacing: 4px; margin-bottom: 30px; }
+.login-box {
+  background: rgba(10,10,26,0.9); border: 1px solid rgba(0,204,255,0.3); border-radius: 8px;
+  padding: 40px; display: flex; flex-direction: column; gap: 16px; width: 400px;
+  box-shadow: 0 0 30px rgba(0,204,255,0.1);
+}
+.login-box input { width: 100%; }
+.login-row { display: flex; gap: 10px; }
+.login-row input { flex: 1; }
+.login-row button { white-space: nowrap; }
+
+/* === ROOM LOBBY === */
+#lobbyScreen {
+  flex-direction: column; align-items: center; justify-content: center; gap: 16px;
+}
+.lobby-container {
+  background: rgba(10,10,26,0.95); border: 1px solid rgba(0,204,255,0.3); border-radius: 8px;
+  padding: 30px; width: 600px; max-height: 80vh; display: flex; flex-direction: column; gap: 16px;
+  box-shadow: 0 0 30px rgba(0,204,255,0.1);
+}
+.room-code-display {
+  text-align: center; font-size: 32px; color: var(--primary); letter-spacing: 8px;
+  cursor: pointer; padding: 10px; border: 1px dashed rgba(0,204,255,0.4); border-radius: 4px;
+  transition: background 0.3s;
+}
+.room-code-display:hover { background: rgba(0,204,255,0.1); }
+.room-code-display small { display: block; font-size: 11px; color: #888; letter-spacing: 2px; margin-top: 4px; }
+.player-list { list-style: none; display: flex; flex-direction: column; gap: 8px; max-height: 200px; overflow-y: auto; }
+.player-list li {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 16px; background: rgba(255,255,255,0.03); border-radius: 4px;
+  border: 1px solid rgba(255,255,255,0.05);
+}
+.player-list .ready-badge { color: var(--success); font-size: 12px; }
+.player-list .not-ready-badge { color: #666; font-size: 12px; }
+.player-list .ai-badge { color: var(--accent); font-size: 12px; margin-left: 8px; }
+.lobby-actions { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+.lobby-chat {
+  flex: 1; min-height: 120px; max-height: 200px; overflow-y: auto;
+  background: rgba(0,0,0,0.3); border-radius: 4px; padding: 10px; font-size: 12px;
+}
+.lobby-chat-input { display: flex; gap: 8px; }
+.lobby-chat-input input { flex: 1; }
+
+/* === HERO SELECTION === */
+#heroSelectModal .hero-select-container {
+  display: flex; flex-direction: column; align-items: center; gap: 24px;
+}
+#heroSelectModal h2 { font-size: 28px; letter-spacing: 4px; }
+.hero-cards-row { display: flex; gap: 20px; }
+.hero-card {
+  width: 220px; background: rgba(10,10,26,0.95); border: 2px solid rgba(255,255,255,0.1);
+  border-radius: 8px; padding: 20px; cursor: pointer; transition: all 0.3s;
+  display: flex; flex-direction: column; gap: 10px;
+}
+.hero-card:hover { transform: translateY(-5px); }
+.hero-card.selected { border-color: var(--primary); box-shadow: 0 0 25px rgba(0,204,255,0.4); transform: translateY(-8px); }
+.hero-card.terran { border-color: rgba(255,102,0,0.5); }
+.hero-card.terran.selected { border-color: var(--terran); box-shadow: 0 0 25px rgba(255,102,0,0.4); }
+.hero-card.protoss { border-color: rgba(0,204,255,0.5); }
+.hero-card.protoss.selected { border-color: var(--protoss); box-shadow: 0 0 25px rgba(0,204,255,0.4); }
+.hero-card.zerg { border-color: rgba(153,0,255,0.5); }
+.hero-card.zerg.selected { border-color: var(--zerg); box-shadow: 0 0 25px rgba(153,0,255,0.4); }
+.hero-portrait {
+  font-size: 48px; text-align: center; height: 70px; display: flex;
+  align-items: center; justify-content: center;
+}
+.hero-name { font-size: 18px; text-align: center; font-weight: bold; }
+.hero-faction { font-size: 12px; text-align: center; letter-spacing: 2px; }
+.hero-hp-display { text-align: center; font-size: 14px; }
+.hero-skills { font-size: 11px; color: #aaa; display: flex; flex-direction: column; gap: 6px; }
+.hero-skill-name { color: var(--primary); font-weight: bold; }
+.hero-confirm-btn { padding: 12px 40px; font-size: 16px; }
+
+/* === GAME BOARD === */
+#gameScreen {
+  flex-direction: column; width: 100%; height: 100%;
+}
+#gameScreen.active { display: flex; }
+.top-bar {
+  height: 44px; background: rgba(0,0,0,0.6); border-bottom: 1px solid rgba(0,204,255,0.2);
+  display: flex; align-items: center; padding: 0 20px; gap: 20px; flex-shrink: 0; z-index: 10;
+}
+.top-bar .room-info { color: var(--primary); font-size: 13px; letter-spacing: 1px; }
+.top-bar .phase-info { color: var(--secondary); font-size: 13px; }
+.top-bar .turn-info { color: var(--success); font-size: 13px; margin-left: auto; }
+.game-body { display: flex; flex: 1; overflow: hidden; }
+.game-table {
+  flex: 1; display: flex; flex-direction: column; position: relative;
+  padding: 10px 20px;
+}
+.other-players {
+  display: flex; justify-content: center; gap: 12px; padding: 10px 0;
+  flex-wrap: wrap; flex-shrink: 0;
+}
+.center-area {
+  flex: 1; display: flex; align-items: center; justify-content: center;
+  position: relative; min-height: 120px;
+}
+.center-action {
+  background: rgba(0,0,0,0.5); border: 1px solid rgba(0,204,255,0.2); border-radius: 8px;
+  padding: 16px 30px; text-align: center; font-size: 15px; min-width: 200px;
+  opacity: 0; transition: opacity 0.4s;
+}
+.center-action.visible { opacity: 1; }
+.my-area {
+  display: flex; flex-direction: column; gap: 8px; flex-shrink: 0;
+  padding-bottom: 10px;
+}
+.my-player-info {
+  display: flex; align-items: center; gap: 16px; padding: 8px 12px;
+  background: rgba(0,204,255,0.05); border: 1px solid rgba(0,204,255,0.2); border-radius: 6px;
+}
+.my-identity { font-size: 12px; color: var(--accent); letter-spacing: 1px; }
+.my-equip-slots { display: flex; gap: 8px; font-size: 11px; }
+.my-equip-slots .equip-slot {
+  padding: 2px 8px; border: 1px solid rgba(255,255,255,0.1); border-radius: 3px;
+  color: #666; min-width: 60px; text-align: center;
+}
+.my-equip-slots .equip-slot.filled { color: var(--secondary); border-color: rgba(255,102,0,0.4); }
+
+/* === PLAYER SLOTS === */
+.player-slot {
+  width: 140px; background: rgba(10,10,26,0.9); border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 6px; padding: 10px; display: flex; flex-direction: column; gap: 4px;
+  transition: all 0.3s; cursor: default; position: relative;
+}
+.player-slot.clickable { cursor: pointer; }
+.player-slot.clickable:hover { border-color: var(--danger); box-shadow: 0 0 15px rgba(255,51,51,0.3); }
+.player-slot.active-turn {
+  border-color: var(--primary);
+  animation: turnGlow 2s ease-in-out infinite;
+}
+.player-slot.dead { opacity: 0.4; filter: grayscale(0.8); }
+.player-slot .ps-header { display: flex; align-items: center; gap: 6px; }
+.player-slot .ps-faction { font-size: 14px; }
+.player-slot .ps-name { font-size: 12px; font-weight: bold; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.player-slot .ps-cards { font-size: 10px; color: #888; background: rgba(255,255,255,0.05); padding: 1px 6px; border-radius: 10px; }
+.player-slot .ps-hero { font-size: 11px; color: var(--primary); margin-top: 2px; }
+.player-slot .ps-identity { font-size: 10px; padding: 1px 6px; border-radius: 3px; display: inline-block; margin-top: 2px; }
+.player-slot .ps-identity.commander { background: rgba(255,51,51,0.2); color: var(--danger); border: 1px solid rgba(255,51,51,0.3); }
+.player-slot .ps-identity.hidden { background: rgba(255,255,255,0.05); color: #555; }
+.player-slot .ps-identity.revealed { background: rgba(153,0,255,0.2); color: var(--accent); }
+.hp-bar { display: flex; gap: 2px; margin-top: 4px; }
+.hp-segment {
+  width: 14px; height: 8px; border-radius: 2px; border: 1px solid rgba(255,255,255,0.15);
+  transition: background 0.3s;
+}
+.hp-segment.full { border-color: transparent; }
+.hp-segment.empty { background: rgba(255,255,255,0.05); }
+.ps-equips { display: flex; gap: 3px; flex-wrap: wrap; margin-top: 3px; }
+.ps-equip {
+  font-size: 9px; padding: 1px 4px; border-radius: 2px;
+  background: rgba(255,255,255,0.05); color: #888;
+}
+.ps-equip.weapon { color: #ff8800; border: 1px solid rgba(255,136,0,0.3); }
+.ps-equip.armor { color: #4488ff; border: 1px solid rgba(68,136,255,0.3); }
+.ps-equip.horse { color: #44ff88; border: 1px solid rgba(68,255,136,0.3); }
+.player-slot .ps-damage-flash {
+  position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+  background: rgba(255,0,0,0.3); border-radius: 6px; pointer-events: none;
+  opacity: 0; transition: opacity 0.1s;
+}
+.player-slot .ps-heal-flash {
+  position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+  background: rgba(0,255,100,0.2); border-radius: 6px; pointer-events: none;
+  opacity: 0; transition: opacity 0.1s;
+}
+
+/* === HAND CARDS === */
+.hand-cards {
+  display: flex; gap: 6px; padding: 8px 12px; overflow-x: auto;
+  min-height: 130px; align-items: flex-end;
+}
+.hand-card {
+  width: 90px; min-width: 90px; height: 120px; border-radius: 6px;
+  background: linear-gradient(135deg, #1a1a2e 0%, #0d0d1a 100%);
+  border: 2px solid rgba(255,255,255,0.15); cursor: pointer;
+  display: flex; flex-direction: column; padding: 6px; gap: 2px;
+  transition: all 0.25s; position: relative; overflow: hidden;
+}
+.hand-card::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+  background: linear-gradient(135deg, transparent 40%, rgba(255,255,255,0.03) 100%);
+  pointer-events: none;
+}
+.hand-card:hover { transform: translateY(-10px); }
+.hand-card.selected { transform: translateY(-16px); box-shadow: 0 0 20px rgba(0,204,255,0.5); border-color: var(--primary); }
+.hand-card.dimmed { opacity: 0.4; cursor: default; }
+.hand-card.dimmed:hover { transform: none; }
+.hand-card .card-suit { font-size: 12px; line-height: 1; }
+.hand-card .card-suit.red { color: #ff4444; }
+.hand-card .card-suit.black { color: #e0e0e0; }
+.hand-card .card-number { font-size: 11px; font-weight: bold; }
+.hand-card .card-name {
+  flex: 1; display: flex; align-items: center; justify-content: center;
+  font-size: 16px; font-weight: bold; writing-mode: vertical-rl; letter-spacing: 2px;
+}
+.hand-card .card-type-label { font-size: 8px; text-align: center; color: #888; }
+/* Card type borders */
+.hand-card.type-basic { border-color: rgba(180,180,180,0.3); }
+.hand-card.type-trick { border-color: rgba(255,204,0,0.4); }
+.hand-card.type-equip { border-color: rgba(0,255,102,0.4); }
+/* Card glow by name */
+.hand-card.card-sha { background: linear-gradient(135deg, #1a0a0a 0%, #0d0d1a 100%); }
+.hand-card.card-sha .card-name { color: #ff4444; text-shadow: 0 0 8px rgba(255,68,68,0.5); }
+.hand-card.card-shan { background: linear-gradient(135deg, #0a0a1a 0%, #0d1020 100%); }
+.hand-card.card-shan .card-name { color: #44aaff; text-shadow: 0 0 8px rgba(68,170,255,0.5); }
+.hand-card.card-tao { background: linear-gradient(135deg, #1a0a14 0%, #0d0d1a 100%); }
+.hand-card.card-tao .card-name { color: #ff88cc; text-shadow: 0 0 8px rgba(255,136,204,0.5); }
+.hand-card.card-trick .card-name { color: #ffcc00; text-shadow: 0 0 8px rgba(255,204,0,0.5); }
+.hand-card.card-weapon .card-name { color: #ff8800; }
+.hand-card.card-armor .card-name { color: #4488ff; }
+.hand-card.card-horse .card-name { color: #44ff88; }
+
+/* === ACTION BUTTONS === */
+.action-bar {
+  display: flex; gap: 10px; justify-content: center; padding: 6px 0;
+  flex-shrink: 0; min-height: 44px; align-items: center;
+}
+.action-bar button { padding: 8px 20px; font-size: 13px; }
+.discard-info { color: var(--secondary); font-size: 13px; }
+.skill-buttons { display: flex; gap: 8px; }
+.skill-btn {
+  border-color: var(--accent); color: var(--accent); background: rgba(153,0,255,0.1);
+  padding: 6px 14px; font-size: 11px;
+}
+.skill-btn:hover { background: rgba(153,0,255,0.25); }
+
+/* === GAME LOG === */
+.game-sidebar {
+  width: 260px; background: rgba(0,0,0,0.5); border-left: 1px solid rgba(0,204,255,0.15);
+  display: flex; flex-direction: column; flex-shrink: 0;
+}
+.sidebar-title {
+  padding: 10px 14px; font-size: 12px; color: var(--primary); letter-spacing: 2px;
+  border-bottom: 1px solid rgba(0,204,255,0.1); text-transform: uppercase;
+}
+.log-container {
+  flex: 1; overflow-y: auto; padding: 8px 12px; display: flex; flex-direction: column; gap: 4px;
+}
+.log-entry { font-size: 11px; color: #999; line-height: 1.5; }
+.log-entry .log-time { color: #555; margin-right: 6px; }
+.log-entry .log-player { color: var(--primary); }
+.log-entry .log-card { color: var(--secondary); }
+.log-entry.log-damage { color: var(--danger); }
+.log-entry.log-heal { color: var(--success); }
+.log-entry.log-death { color: var(--danger); font-weight: bold; }
+.log-entry.log-chat { color: #ccc; }
+.log-entry.log-chat .chat-name { color: var(--accent); }
+.chat-input-area {
+  display: flex; gap: 6px; padding: 8px; border-top: 1px solid rgba(0,204,255,0.1);
+}
+.chat-input-area input { flex: 1; padding: 6px 10px; font-size: 11px; }
+.chat-input-area button { padding: 6px 12px; font-size: 11px; }
+
+/* === GAME OVER MODAL === */
+.game-over-box {
+  background: rgba(10,10,26,0.97); border: 2px solid var(--primary); border-radius: 12px;
+  padding: 40px 60px; text-align: center; display: flex; flex-direction: column; gap: 20px;
+  box-shadow: 0 0 50px rgba(0,204,255,0.2);
+}
+.game-over-box h2 { font-size: 36px; letter-spacing: 6px; }
+.game-over-box .winner-text { font-size: 20px; color: var(--success); }
+.identities-reveal {
+  display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; margin: 10px 0;
+}
+.identity-card {
+  padding: 10px 16px; background: rgba(255,255,255,0.05); border-radius: 6px;
+  border: 1px solid rgba(255,255,255,0.1); font-size: 13px;
+  display: flex; flex-direction: column; gap: 4px;
+}
+.identity-card .ic-name { color: var(--primary); font-weight: bold; }
+.identity-card .ic-identity { font-size: 11px; }
+
+/* === ANIMATIONS === */
+@keyframes turnGlow {
+  0%, 100% { box-shadow: 0 0 8px rgba(0,204,255,0.3); }
+  50% { box-shadow: 0 0 20px rgba(0,204,255,0.6), 0 0 40px rgba(0,204,255,0.2); }
+}
+@keyframes damageShake {
+  0%, 100% { transform: translateX(0); }
+  10%, 30%, 50%, 70%, 90% { transform: translateX(-4px); }
+  20%, 40%, 60%, 80% { transform: translateX(4px); }
+}
+@keyframes healPulse {
+  0% { box-shadow: 0 0 0 0 rgba(0,255,100,0.4); }
+  70% { box-shadow: 0 0 0 15px rgba(0,255,100,0); }
+  100% { box-shadow: 0 0 0 0 rgba(0,255,100,0); }
+}
+@keyframes cardFlyIn {
+  from { transform: translateY(50px) scale(0.8); opacity: 0; }
+  to { transform: translateY(0) scale(1); opacity: 1; }
+}
+@keyframes cardFlyToCenter {
+  from { opacity: 1; }
+  to { transform: translateY(-100px) scale(0.5); opacity: 0; }
+}
+@keyframes fadeInUp {
+  from { transform: translateY(20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+@keyframes deathFade {
+  to { filter: grayscale(1); opacity: 0.3; }
+}
+.anim-damage { animation: damageShake 0.5s ease-in-out; }
+.anim-heal { animation: healPulse 0.8s ease-out; }
+.anim-card-in { animation: cardFlyIn 0.3s ease-out; }
+.anim-card-out { animation: cardFlyToCenter 0.4s ease-in forwards; }
+.anim-death { animation: deathFade 1s ease-out forwards; }
+
+/* === RESPONSIVE === */
+@media (max-width: 1200px) {
+  .game-sidebar { width: 200px; }
+  .player-slot { width: 120px; padding: 8px; }
+  .hand-card { width: 80px; min-width: 80px; height: 110px; }
+}
+@media (max-width: 1024px) {
+  .game-sidebar { width: 180px; }
+  .other-players { gap: 8px; }
+  .player-slot { width: 110px; font-size: 11px; }
+  .hand-card { width: 72px; min-width: 72px; height: 100px; }
+  .hand-card .card-name { font-size: 14px; }
+}
+
+</style>
+</head>
+<body>
+
+<!-- STARFIELD BACKGROUND -->
+<div id="starfield"></div>
+
+<!-- LOGIN SCREEN -->
+<div id="loginScreen" class="screen active">
+  <div class="login-title">STARCRAFT × SANGUOSHA</div>
+  <div class="login-subtitle">三 国 杀 · 星 际 争 霸</div>
+  <div class="login-box glow-border">
+    <input type="text" id="playerNameInput" placeholder="输入你的名字 / Enter Name" maxlength="20" autocomplete="off">
+    <button id="createRoomBtn" onclick="createRoom()">创建房间 / CREATE ROOM</button>
+    <div style="text-align:center;color:#555;font-size:12px;letter-spacing:2px;">── 或者 / OR ──</div>
+    <div class="login-row">
+      <input type="text" id="roomCodeInput" placeholder="房间号 / Room Code" maxlength="10" autocomplete="off">
+      <button class="secondary" id="joinRoomBtn" onclick="joinRoom()">加入 / JOIN</button>
+    </div>
+    <div id="loginError" style="color:var(--danger);font-size:12px;text-align:center;display:none;"></div>
+  </div>
+</div>
+
+<!-- ROOM LOBBY -->
+<div id="lobbyScreen" class="screen">
+  <div class="lobby-container glow-border">
+    <h2 style="text-align:center;letter-spacing:4px;">房间大厅 / ROOM LOBBY</h2>
+    <div class="room-code-display" id="roomCodeDisplay" onclick="copyRoomCode()" title="Click to copy">
+      <span id="roomCodeText"></span>
+      <small>点击复制房间号 / CLICK TO COPY</small>
+    </div>
+    <div style="font-size:12px;color:#888;letter-spacing:1px;">玩家列表 / PLAYERS (<span id="playerCountDisplay">0</span>)</div>
+    <ul class="player-list" id="playerList"></ul>
+    <div class="lobby-actions">
+      <button class="success" id="readyBtn" onclick="toggleReady()">准备 / READY</button>
+      <button class="secondary" id="addAIBtn" onclick="addAI()">添加AI / ADD AI</button>
+      <button id="startGameBtn" onclick="startGame()" disabled>开始游戏 / START</button>
+    </div>
+    <div style="font-size:12px;color:#888;letter-spacing:1px;">聊天 / CHAT</div>
+    <div class="lobby-chat" id="lobbyChat"></div>
+    <div class="lobby-chat-input">
+      <input type="text" id="lobbyChatInput" placeholder="发送消息..." onkeydown="if(event.key==='Enter')sendChat()">
+      <button onclick="sendChat()" style="padding:6px 14px;font-size:12px;">发送</button>
+    </div>
+  </div>
+</div>
+
+<!-- HERO SELECTION MODAL -->
+<div id="heroSelectModal" class="modal">
+  <div class="hero-select-container">
+    <h2>选择英雄 / SELECT HERO</h2>
+    <div class="hero-cards-row" id="heroCardsRow"></div>
+    <button class="hero-confirm-btn success" id="heroConfirmBtn" onclick="confirmHero()" disabled>确认选择 / CONFIRM</button>
+  </div>
+</div>
+
+<!-- MAIN GAME BOARD -->
+<div id="gameScreen" class="screen">
+  <!-- TOP INFO BAR -->
+  <div class="top-bar">
+    <span class="room-info">房间 / ROOM: <span id="gameRoomCode"></span></span>
+    <span class="phase-info" id="phaseDisplay">等待中...</span>
+    <span class="turn-info" id="turnDisplay"></span>
+  </div>
+  <!-- GAME BODY -->
+  <div class="game-body">
+    <!-- GAME TABLE -->
+    <div class="game-table">
+      <div class="other-players" id="otherPlayers"></div>
+      <div class="center-area">
+        <div class="center-action" id="centerAction"></div>
+      </div>
+      <div class="my-area">
+        <div class="my-player-info" id="myPlayerInfo">
+          <span class="ps-faction" id="myFaction"></span>
+          <span class="ps-name" id="myHeroName">--</span>
+          <div class="hp-bar" id="myHpBar"></div>
+          <span class="my-identity" id="myIdentity"></span>
+          <div class="my-equip-slots" id="myEquips">
+            <span class="equip-slot" id="myWeapon" title="武器">⚔ --</span>
+            <span class="equip-slot" id="myArmor" title="防具">🛡 --</span>
+            <span class="equip-slot" id="myPlusHorse" title="+1马">🐎+1 --</span>
+            <span class="equip-slot" id="myMinusHorse" title="-1马">🐎-1 --</span>
+          </div>
+        </div>
+        <div class="hand-cards" id="handCards"></div>
+        <div class="action-bar" id="actionBar"></div>
+      </div>
+    </div>
+    <!-- GAME LOG SIDEBAR -->
+    <div class="game-sidebar">
+      <div class="sidebar-title">行动日志 / ACTION LOG</div>
+      <div class="log-container" id="logContainer"></div>
+      <div class="chat-input-area">
+        <input type="text" id="gameChatInput" placeholder="聊天..." onkeydown="if(event.key==='Enter')sendGameChat()">
+        <button onclick="sendGameChat()">发送</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- GAME OVER MODAL -->
+<div id="gameOverModal" class="modal">
+  <div class="game-over-box">
+    <h2>游戏结束 / GAME OVER</h2>
+    <div class="winner-text" id="winnerText"></div>
+    <div class="identities-reveal" id="identitiesReveal"></div>
+    <button onclick="backToLobby()">返回大厅 / BACK TO LOBBY</button>
+  </div>
+</div>
+
+<script>
+// === STATE ===
+const state = {
+  ws: null,
+  playerId: null,
+  playerName: '',
+  roomId: '',
+  isCreator: false,
+  players: [],
+  myCards: [],
+  myIdentity: '',
+  currentTurn: null,
+  currentPhase: '',
+  selectedCard: null,
+  selectedCards: [],
+  selectingTarget: false,
+  discardMode: false,
+  discardCount: 0,
+  respondMode: false,
+  respondType: '',
+  heroChoices: [],
+  gameLog: [],
+  chatMessages: [],
+};
+
+// === WEBSOCKET ===
+function connectWS() {
+  const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+  state.ws = new WebSocket(`${proto}//${location.host}`);
+  state.ws.onopen = () => { console.log('WS connected'); };
+  state.ws.onclose = () => {
+    console.log('WS disconnected');
+    setTimeout(() => {
+      if (state.roomId) connectWS();
+    }, 3000);
+  };
+  state.ws.onerror = (e) => { console.error('WS error', e); };
+  state.ws.onmessage = (evt) => {
+    let msg;
+    try { msg = JSON.parse(evt.data); } catch(e) { return; }
+    handleMessage(msg);
+  };
+}
+
+function send(obj) {
+  if (state.ws && state.ws.readyState === WebSocket.OPEN) {
+    state.ws.send(JSON.stringify(obj));
+  }
+}
+
+// === MESSAGE HANDLERS ===
+function handleMessage(msg) {
+  switch(msg.type) {
+    case 'connected':
+      state.playerId = msg.playerId;
+      console.log('My playerId:', state.playerId);
+      break;
+
+    case 'roomCreated':
+      state.roomId = msg.roomId;
+      state.isCreator = true;
+      if (msg.playerId) state.playerId = msg.playerId;
+      document.getElementById('roomCodeText').textContent = msg.roomId;
+      document.getElementById('gameRoomCode').textContent = msg.roomId;
+      showScreen('lobbyScreen');
+      break;
+
+    case 'roomUpdate':
+      state.players = msg.players || [];
+      renderLobbyPlayers();
+      break;
+
+    case 'heroSelect':
+      state.heroChoices = msg.heroes || [];
+      state.selectedHero = null;
+      renderHeroSelection();
+      showModal('heroSelectModal');
+      break;
+
+    case 'gameStart':
+      hideModal('heroSelectModal');
+      state.players = msg.players || [];
+      state.myIdentity = msg.yourIdentity || '';
+      state.myCards = msg.yourCards || [];
+      if (msg.yourId) state.playerId = msg.yourId;
+      state.currentPhase = '';
+      state.currentTurn = null;
+      state.selectedCard = null;
+      state.selectedCards = [];
+      state.selectingTarget = false;
+      state.discardMode = false;
+      state.respondMode = false;
+      showScreen('gameScreen');
+      renderGameBoard();
+      addLog('游戏开始！/ Game started!');
+      break;
+
+    case 'turnStart':
+      state.currentTurn = msg.playerId;
+      state.selectedCard = null;
+      state.selectedCards = [];
+      state.selectingTarget = false;
+      state.discardMode = false;
+      state.respondMode = false;
+      renderGameBoard();
+      const tp = getPlayerById(msg.playerId);
+      addLog(`${tp ? tp.name || tp.heroName : '???'} 的回合开始`, 'log-turn');
+      break;
+
+    case 'phase':
+      state.currentPhase = msg.phase;
+      state.currentTurn = msg.playerId || state.currentTurn;
+      if (msg.phase === 'play' && isMyTurn()) {
+        state.discardMode = false;
+        state.respondMode = false;
+      }
+      if (msg.phase === 'discard' && isMyTurn()) {
+        // discard mode handled by server telling us how many
+      }
+      renderPhaseDisplay();
+      renderActionBar();
+      renderHandCards();
+      renderOtherPlayers();
+      break;
+
+    case 'drawCards':
+      if (msg.cards && msg.playerId === state.playerId) {
+        state.myCards = state.myCards.concat(msg.cards);
+        renderHandCards();
+      }
+      const dp = getPlayerById(msg.playerId);
+      if (dp) {
+        dp.handCount = (dp.handCount || 0) + (msg.count || 0);
+        renderOtherPlayers();
+      }
+      addLog(`${dp ? dp.name || dp.heroName : '???'} 摸了 ${msg.count} 张牌`);
+      break;
+
+    case 'cardPlayed': {
+      const pp = getPlayerById(msg.playerId);
+      const tp2 = msg.targetId ? getPlayerById(msg.targetId) : null;
+      const cname = msg.card ? msg.card.name : '?';
+      let logText = `${pp ? pp.name || pp.heroName : '???'} 使用了 ${cname}`;
+      if (tp2) logText += ` → ${tp2.name || tp2.heroName}`;
+      addLog(logText);
+      showCenterAction(logText);
+      // Remove card from hand if it's our card
+      if (msg.playerId === state.playerId && msg.card && msg.card.id) {
+        state.myCards = state.myCards.filter(c => c.id !== msg.card.id);
+      }
+      // Update hand counts for other players
+      if (pp && msg.playerId !== state.playerId) {
+        pp.handCount = Math.max(0, (pp.handCount || 0) - 1);
+      }
+      renderHandCards();
+      renderOtherPlayers();
+      break;
+    }
+
+    case 'requestResponse':
+      if (msg.requestType === 'discard') {
+        // Server asking us to discard cards
+        state.discardMode = true;
+        state.discardCount = msg.count || 1;
+        state.selectedCards = [];
+        state.respondMode = false;
+        renderActionBar();
+        renderHandCards();
+        addLog(`请弃 ${msg.count} 张牌`);
+      } else {
+        state.respondMode = true;
+        state.respondType = msg.requestType || '';
+        state.respondFromPlayer = msg.fromPlayer;
+        state.respondCard = msg.card;
+        addLog(`需要响应: ${msg.requestType === 'dodge' ? '请出闪' : msg.requestType === 'peach' ? '请出桃' : msg.requestType}`);
+        renderActionBar();
+        renderHandCards();
+      }
+      break;
+
+    case 'damageDealt': {
+      const dmgP = getPlayerById(msg.targetId);
+      if (dmgP) {
+        dmgP.hp = Math.max(0, (dmgP.hp || 0) - (msg.amount || 1));
+        flashPlayer(msg.targetId, 'damage');
+      }
+      addLog(`${dmgP ? dmgP.name || dmgP.heroName : '???'} 受到 ${msg.amount || 1} 点伤害`, 'log-damage');
+      renderGameBoard();
+      break;
+    }
+
+    case 'hpChanged': {
+      const hpP = getPlayerById(msg.playerId);
+      if (hpP) {
+        const oldHp = hpP.hp;
+        hpP.hp = msg.hp;
+        hpP.maxHp = msg.maxHp || hpP.maxHp;
+        if (msg.hp > oldHp) flashPlayer(msg.playerId, 'heal');
+      }
+      renderGameBoard();
+      break;
+    }
+
+    case 'playerDied': {
+      const deadP = getPlayerById(msg.playerId);
+      if (deadP) {
+        deadP.dead = true;
+        deadP.identity = msg.identity;
+      }
+      addLog(`${deadP ? deadP.name || deadP.heroName : '???'} 阵亡！身份: ${identityNameCN(msg.identity)}`, 'log-death');
+      renderGameBoard();
+      break;
+    }
+
+    case 'cardsChanged': {
+      const cp = getPlayerById(msg.playerId);
+      if (cp) cp.handCount = msg.handCount;
+      renderOtherPlayers();
+      break;
+    }
+
+    case 'yourCards':
+      state.myCards = msg.cards || [];
+      renderHandCards();
+      break;
+
+    case 'equipChanged': {
+      const ep = getPlayerById(msg.playerId);
+      if (ep) {
+        if (!ep.equipment) ep.equipment = {};
+        ep.equipment[msg.slot] = msg.card;
+      }
+      renderGameBoard();
+      break;
+    }
+
+    case 'judgement': {
+      const jp = getPlayerById(msg.playerId);
+      addLog(`${jp ? jp.name || jp.heroName : '???'} 判定: ${msg.card ? suitSymbol(msg.card.suit) + numberDisplay(msg.card.number) : '?'} → ${msg.result || ''}`);
+      break;
+    }
+
+    case 'gameOver':
+      state.gameOver = true;
+      renderGameOver(msg);
+      showModal('gameOverModal');
+      break;
+
+    case 'error':
+      showError(msg.message || 'Unknown error');
+      addLog('错误: ' + (msg.message || ''), 'log-damage');
+      break;
+
+    case 'log':
+      addLog(msg.text || '');
+      break;
+
+    case 'chat': {
+      const chatHtml = `<span class="chat-name">${escHtml(msg.from || '???')}:</span> ${escHtml(msg.text || '')}`;
+      addLog(chatHtml, 'log-chat', true);
+      // Also add to lobby chat if in lobby
+      const lc = document.getElementById('lobbyChat');
+      if (lc) {
+        const div = document.createElement('div');
+        div.innerHTML = `<span style="color:var(--accent)">${escHtml(msg.from || '???')}:</span> ${escHtml(msg.text || '')}`;
+        div.style.marginBottom = '4px';
+        lc.appendChild(div);
+        lc.scrollTop = lc.scrollHeight;
+      }
+      break;
+    }
+
+    case 'discardRequest':
+      state.discardMode = true;
+      state.discardCount = msg.count || 1;
+      state.selectedCards = [];
+      renderActionBar();
+      renderHandCards();
+      addLog(`请弃 ${msg.count} 张牌`);
+      break;
+
+    default:
+      console.log('Unhandled message:', msg);
+  }
+}
+
+function escHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+// === UI RENDERING ===
+
+function renderLobbyPlayers() {
+  const list = document.getElementById('playerList');
+  const countEl = document.getElementById('playerCountDisplay');
+  countEl.textContent = state.players.length;
+  list.innerHTML = '';
+  state.players.forEach((p, i) => {
+    const li = document.createElement('li');
+    const nameSpan = document.createElement('span');
+    nameSpan.textContent = (i === 0 ? '👑 ' : '') + (p.name || 'Player');
+    if (p.isAI) {
+      const aiBadge = document.createElement('span');
+      aiBadge.className = 'ai-badge';
+      aiBadge.textContent = ' [AI]';
+      nameSpan.appendChild(aiBadge);
+    }
+    li.appendChild(nameSpan);
+    const statusSpan = document.createElement('span');
+    statusSpan.className = p.ready ? 'ready-badge' : 'not-ready-badge';
+    statusSpan.textContent = p.ready ? '✓ 已准备' : '○ 未准备';
+    li.appendChild(statusSpan);
+    list.appendChild(li);
+  });
+
+  // Update start button
+  const startBtn = document.getElementById('startGameBtn');
+  const allReady = state.players.length >= 2 && state.players.every(p => p.ready);
+  startBtn.disabled = !(state.isCreator && allReady);
+}
+
+function renderHeroSelection() {
+  const row = document.getElementById('heroCardsRow');
+  row.innerHTML = '';
+  state.heroChoices.forEach(hero => {
+    const card = document.createElement('div');
+    card.className = `hero-card ${factionClass(hero.faction)}`;
+    card.dataset.heroId = hero.id;
+    card.onclick = () => selectHero(hero.id);
+
+    const portrait = document.createElement('div');
+    portrait.className = 'hero-portrait';
+    portrait.textContent = factionIcon(hero.faction);
+
+    const name = document.createElement('div');
+    name.className = 'hero-name';
+    name.textContent = hero.name || 'Unknown';
+    name.style.color = factionColor(hero.faction);
+
+    const faction = document.createElement('div');
+    faction.className = 'hero-faction';
+    faction.textContent = (hero.faction || '').toUpperCase();
+    faction.style.color = factionColor(hero.faction);
+
+    const hpDisp = document.createElement('div');
+    hpDisp.className = 'hero-hp-display';
+    hpDisp.innerHTML = '❤'.repeat(hero.hp || 4) + ` (${hero.hp || 4} HP)`;
+    hpDisp.style.color = factionColor(hero.faction);
+
+    const skills = document.createElement('div');
+    skills.className = 'hero-skills';
+    (hero.skills || []).forEach(sk => {
+      const skDiv = document.createElement('div');
+      skDiv.innerHTML = `<span class="hero-skill-name">${escHtml(sk.name || '')}</span>: ${escHtml(sk.desc || '')}`;
+      skills.appendChild(skDiv);
+    });
+
+    card.appendChild(portrait);
+    card.appendChild(name);
+    card.appendChild(faction);
+    card.appendChild(hpDisp);
+    card.appendChild(skills);
+    row.appendChild(card);
+  });
+}
+
+function renderGameBoard() {
+  renderOtherPlayers();
+  renderMyInfo();
+  renderHandCards();
+  renderActionBar();
+  renderPhaseDisplay();
+}
+
+function renderOtherPlayers() {
+  const container = document.getElementById('otherPlayers');
+  container.innerHTML = '';
+  const others = state.players.filter(p => p.id !== state.playerId);
+  others.forEach(p => {
+    const slot = document.createElement('div');
+    slot.className = 'player-slot';
+    slot.id = 'player-slot-' + p.id;
+    if (p.id === state.currentTurn) slot.classList.add('active-turn');
+    if (p.dead) slot.classList.add('dead');
+    if (state.selectingTarget && !p.dead) {
+      slot.classList.add('clickable');
+      slot.onclick = () => selectTarget(p.id);
+    }
+
+    // Header: faction + name + card count
+    const header = document.createElement('div');
+    header.className = 'ps-header';
+    const fIcon = document.createElement('span');
+    fIcon.className = 'ps-faction';
+    fIcon.textContent = factionIcon(p.faction);
+    const nameEl = document.createElement('span');
+    nameEl.className = 'ps-name';
+    nameEl.textContent = p.name || p.heroName || '???';
+    nameEl.style.color = factionColor(p.faction);
+    const cardsEl = document.createElement('span');
+    cardsEl.className = 'ps-cards';
+    cardsEl.textContent = '🃏' + (p.handCount != null ? p.handCount : '?');
+    header.appendChild(fIcon);
+    header.appendChild(nameEl);
+    header.appendChild(cardsEl);
+
+    // Hero name
+    const heroEl = document.createElement('div');
+    heroEl.className = 'ps-hero';
+    heroEl.textContent = p.heroName || '';
+
+    // Identity
+    const idEl = document.createElement('span');
+    idEl.className = 'ps-identity';
+    if (p.identity === 'commander') {
+      idEl.classList.add('commander');
+      idEl.textContent = '主公';
+    } else if (p.dead && p.identity) {
+      idEl.classList.add('revealed');
+      idEl.textContent = identityNameCN(p.identity);
+    } else {
+      idEl.classList.add('hidden');
+      idEl.textContent = '身份未知';
+    }
+
+    // HP bar
+    const hpBar = document.createElement('div');
+    hpBar.className = 'hp-bar';
+    const maxHp = p.maxHp || 4;
+    const hp = p.hp != null ? p.hp : maxHp;
+    for (let i = 0; i < maxHp; i++) {
+      const seg = document.createElement('div');
+      seg.className = 'hp-segment ' + (i < hp ? 'full' : 'empty');
+      if (i < hp) seg.style.background = factionColor(p.faction);
+      hpBar.appendChild(seg);
+    }
+
+    // Equipment
+    const equips = document.createElement('div');
+    equips.className = 'ps-equips';
+    if (p.equipment) {
+      if (p.equipment.weapon) { const e = document.createElement('span'); e.className = 'ps-equip weapon'; e.textContent = '⚔' + (p.equipment.weapon.name || ''); equips.appendChild(e); }
+      if (p.equipment.armor) { const e = document.createElement('span'); e.className = 'ps-equip armor'; e.textContent = '🛡' + (p.equipment.armor.name || ''); equips.appendChild(e); }
+      if (p.equipment.plusHorse) { const e = document.createElement('span'); e.className = 'ps-equip horse'; e.textContent = '+🐎' + (p.equipment.plusHorse.name || ''); equips.appendChild(e); }
+      if (p.equipment.minusHorse) { const e = document.createElement('span'); e.className = 'ps-equip horse'; e.textContent = '-🐎' + (p.equipment.minusHorse.name || ''); equips.appendChild(e); }
+    }
+
+    // Damage/heal flash overlays
+    const dmgFlash = document.createElement('div');
+    dmgFlash.className = 'ps-damage-flash';
+    const healFlash = document.createElement('div');
+    healFlash.className = 'ps-heal-flash';
+
+    slot.appendChild(header);
+    slot.appendChild(heroEl);
+    slot.appendChild(idEl);
+    slot.appendChild(hpBar);
+    slot.appendChild(equips);
+    slot.appendChild(dmgFlash);
+    slot.appendChild(healFlash);
+    container.appendChild(slot);
+  });
+}
+
+function renderMyInfo() {
+  const me = getPlayerById(state.playerId);
+  if (!me) return;
+
+  document.getElementById('myFaction').textContent = factionIcon(me.faction);
+  const nameEl = document.getElementById('myHeroName');
+  nameEl.textContent = (me.heroName || me.name || '???');
+  nameEl.style.color = factionColor(me.faction);
+  document.getElementById('myIdentity').textContent = identityNameCN(state.myIdentity);
+
+  // HP bar
+  const hpBar = document.getElementById('myHpBar');
+  hpBar.innerHTML = '';
+  const maxHp = me.maxHp || 4;
+  const hp = me.hp != null ? me.hp : maxHp;
+  for (let i = 0; i < maxHp; i++) {
+    const seg = document.createElement('div');
+    seg.className = 'hp-segment ' + (i < hp ? 'full' : 'empty');
+    if (i < hp) seg.style.background = factionColor(me.faction);
+    hpBar.appendChild(seg);
+  }
+
+  // Equipment
+  const eq = me.equipment || {};
+  const setEquip = (elId, item, prefix) => {
+    const el = document.getElementById(elId);
+    if (item) {
+      el.textContent = prefix + (item.name || '?');
+      el.classList.add('filled');
+    } else {
+      el.textContent = prefix + '--';
+      el.classList.remove('filled');
+    }
+  };
+  setEquip('myWeapon', eq.weapon, '⚔ ');
+  setEquip('myArmor', eq.armor, '🛡 ');
+  setEquip('myPlusHorse', eq.plusHorse, '🐎+1 ');
+  setEquip('myMinusHorse', eq.minusHorse, '🐎-1 ');
+}
+
+function renderHandCards() {
+  const container = document.getElementById('handCards');
+  container.innerHTML = '';
+  const isPlay = isMyTurn() && state.currentPhase === 'play';
+  const isRespond = state.respondMode;
+  const isDiscard = state.discardMode;
+
+  state.myCards.forEach(card => {
+    const el = document.createElement('div');
+    el.className = `hand-card ${cardTypeClass(card)} ${cardGlowClass(card)}`;
+    el.dataset.cardId = card.id;
+
+    // Determine if dimmed
+    let dimmed = false;
+    if (!isPlay && !isRespond && !isDiscard) {
+      dimmed = true;
+    } else if (isRespond) {
+      // Only highlight valid response cards
+      const validResp = isValidResponse(card);
+      dimmed = !validResp;
+    }
+    if (dimmed && !isDiscard) el.classList.add('dimmed');
+
+    // Selected state
+    if (state.selectedCard === card.id) el.classList.add('selected');
+    if (state.selectedCards.includes(card.id)) el.classList.add('selected');
+
+    // Suit
+    const suitEl = document.createElement('div');
+    suitEl.className = 'card-suit ' + (suitIsRed(card.suit) ? 'red' : 'black');
+    suitEl.textContent = suitSymbol(card.suit) + ' ' + numberDisplay(card.number);
+    el.appendChild(suitEl);
+
+    // Number line (duplicate for top display)
+    const numEl = document.createElement('div');
+    numEl.className = 'card-number';
+    numEl.style.color = suitIsRed(card.suit) ? '#ff4444' : '#e0e0e0';
+
+    // Card name
+    const nameEl = document.createElement('div');
+    nameEl.className = 'card-name';
+    nameEl.textContent = card.name || '?';
+    el.appendChild(nameEl);
+
+    // Type label
+    const typeEl = document.createElement('div');
+    typeEl.className = 'card-type-label';
+    typeEl.textContent = card.type === 'basic' ? '基本' : card.type === 'trick' ? '锦囊' : card.type === 'equip' || card.type === 'equipment' ? '装备' : '';
+    el.appendChild(typeEl);
+
+    if (!dimmed || isDiscard) {
+      el.onclick = () => onCardClick(card);
+    }
+
+    el.classList.add('anim-card-in');
+    container.appendChild(el);
+  });
+}
+
+function renderActionBar() {
+  const bar = document.getElementById('actionBar');
+  bar.innerHTML = '';
+  const isPlay = isMyTurn() && state.currentPhase === 'play';
+  const isRespond = state.respondMode;
+  const isDiscard = state.discardMode;
+
+  if (isPlay && !isRespond && !isDiscard) {
+    if (state.selectingTarget) {
+      const cancelBtn = document.createElement('button');
+      cancelBtn.className = 'danger';
+      cancelBtn.textContent = '取消 / CANCEL';
+      cancelBtn.onclick = cancelAction;
+      bar.appendChild(cancelBtn);
+    }
+    const endBtn = document.createElement('button');
+    endBtn.className = 'secondary';
+    endBtn.textContent = '结束出牌 / END PHASE';
+    endBtn.onclick = endPlayPhase;
+    bar.appendChild(endBtn);
+  }
+
+  if (isRespond) {
+    const label = document.createElement('span');
+    label.className = 'discard-info';
+    label.textContent = state.respondType === 'dodge' ? '请出闪 / Play Dodge' :
+                        state.respondType === 'peach' ? '请出桃 / Play Peach' :
+                        state.respondType === 'kill' ? '请出杀 / Play Strike' :
+                        `响应: ${state.respondType}`;
+    bar.appendChild(label);
+
+    if (state.selectedCard) {
+      const playBtn = document.createElement('button');
+      playBtn.className = 'success';
+      playBtn.textContent = '出牌 / PLAY';
+      playBtn.onclick = respondWithCard;
+      bar.appendChild(playBtn);
+    }
+
+    const passBtn = document.createElement('button');
+    passBtn.className = 'danger';
+    passBtn.textContent = '过 / PASS';
+    passBtn.onclick = respondPass;
+    bar.appendChild(passBtn);
+  }
+
+  if (isDiscard) {
+    const label = document.createElement('span');
+    label.className = 'discard-info';
+    label.textContent = `弃牌: ${state.selectedCards.length}/${state.discardCount}`;
+    bar.appendChild(label);
+
+    const confirmBtn = document.createElement('button');
+    confirmBtn.className = 'success';
+    confirmBtn.textContent = '确认弃牌 / CONFIRM';
+    confirmBtn.disabled = state.selectedCards.length !== state.discardCount;
+    confirmBtn.onclick = confirmDiscard;
+    bar.appendChild(confirmBtn);
+  }
+}
+
+function renderPhaseDisplay() {
+  const phaseEl = document.getElementById('phaseDisplay');
+  phaseEl.textContent = phaseNameCN(state.currentPhase);
+
+  const turnEl = document.getElementById('turnDisplay');
+  const tp = getPlayerById(state.currentTurn);
+  if (tp) {
+    turnEl.textContent = `当前回合: ${tp.name || tp.heroName || '???'}`;
+    if (isMyTurn()) {
+      turnEl.textContent += ' (你的回合!)';
+      turnEl.style.color = 'var(--success)';
+    } else {
+      turnEl.style.color = 'var(--text)';
+    }
+  }
+}
+
+function renderGameOver(msg) {
+  const winText = document.getElementById('winnerText');
+  winText.textContent = `${identityNameCN(msg.winIdentity)} 获胜！`;
+
+  const reveal = document.getElementById('identitiesReveal');
+  reveal.innerHTML = '';
+  state.players.forEach(p => {
+    const card = document.createElement('div');
+    card.className = 'identity-card';
+    const isWinner = (msg.winners || []).includes(p.id);
+    if (isWinner) card.style.borderColor = 'var(--success)';
+
+    const nameEl = document.createElement('div');
+    nameEl.className = 'ic-name';
+    nameEl.textContent = (p.name || p.heroName || '???') + (isWinner ? ' ★' : '');
+    nameEl.style.color = factionColor(p.faction);
+
+    const idEl = document.createElement('div');
+    idEl.className = 'ic-identity';
+    idEl.textContent = identityNameCN(p.identity);
+
+    card.appendChild(nameEl);
+    card.appendChild(idEl);
+    reveal.appendChild(card);
+  });
+}
+
+function addLog(text, cls, isHtml) {
+  const container = document.getElementById('logContainer');
+  if (!container) return;
+  const entry = document.createElement('div');
+  entry.className = 'log-entry ' + (cls || '');
+  const time = `<span class="log-time">[${timeStr()}]</span> `;
+  if (isHtml) {
+    entry.innerHTML = time + text;
+  } else {
+    entry.innerHTML = time + escHtml(text);
+  }
+  container.appendChild(entry);
+  container.scrollTop = container.scrollHeight;
+}
+
+function showCenterAction(text) {
+  const el = document.getElementById('centerAction');
+  el.textContent = text;
+  el.classList.add('visible');
+  clearTimeout(state._centerTimeout);
+  state._centerTimeout = setTimeout(() => {
+    el.classList.remove('visible');
+  }, 3000);
+}
+
+function flashPlayer(playerId, type) {
+  const slot = document.getElementById('player-slot-' + playerId);
+  if (!slot) return;
+  const flashEl = slot.querySelector(type === 'damage' ? '.ps-damage-flash' : '.ps-heal-flash');
+  if (!flashEl) return;
+  flashEl.style.opacity = '1';
+  if (type === 'damage') slot.classList.add('anim-damage');
+  setTimeout(() => {
+    flashEl.style.opacity = '0';
+    slot.classList.remove('anim-damage');
+  }, 500);
+}
+
+// === GAME ACTIONS ===
+function createRoom() {
+  const name = document.getElementById('playerNameInput').value.trim();
+  if (!name) { showError('请输入名字'); return; }
+  state.playerName = name;
+  connectWS();
+  // Wait for connection then send
+  const waitSend = () => {
+    if (state.ws.readyState === WebSocket.OPEN) {
+      send({ type: 'createRoom', playerName: name });
+    } else {
+      setTimeout(waitSend, 100);
+    }
+  };
+  waitSend();
+}
+
+function joinRoom() {
+  const name = document.getElementById('playerNameInput').value.trim();
+  const code = document.getElementById('roomCodeInput').value.trim();
+  if (!name) { showError('请输入名字'); return; }
+  if (!code) { showError('请输入房间号'); return; }
+  state.playerName = name;
+  state.roomId = code;
+  connectWS();
+  const waitSend = () => {
+    if (state.ws.readyState === WebSocket.OPEN) {
+      send({ type: 'joinRoom', roomId: code, playerName: name });
+      document.getElementById('roomCodeText').textContent = code;
+      document.getElementById('gameRoomCode').textContent = code;
+      showScreen('lobbyScreen');
+    } else {
+      setTimeout(waitSend, 100);
+    }
+  };
+  waitSend();
+}
+
+function copyRoomCode() {
+  const code = document.getElementById('roomCodeText').textContent;
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(code).then(() => {
+      const el = document.getElementById('roomCodeDisplay');
+      el.querySelector('small').textContent = '已复制! / COPIED!';
+      setTimeout(() => el.querySelector('small').textContent = '点击复制房间号 / CLICK TO COPY', 2000);
+    });
+  }
+}
+
+function toggleReady() {
+  send({ type: 'ready' });
+}
+
+function addAI() {
+  send({ type: 'addAI' });
+}
+
+function startGame() {
+  send({ type: 'startGame' });
+}
+
+function selectHero(heroId) {
+  state.selectedHero = heroId;
+  document.querySelectorAll('.hero-card').forEach(c => {
+    c.classList.toggle('selected', c.dataset.heroId == heroId);
+  });
+  document.getElementById('heroConfirmBtn').disabled = false;
+}
+
+function confirmHero() {
+  if (!state.selectedHero) return;
+  send({ type: 'selectHero', heroId: state.selectedHero });
+  document.getElementById('heroConfirmBtn').disabled = true;
+  document.getElementById('heroConfirmBtn').textContent = '等待中... / WAITING...';
+}
+
+function onCardClick(card) {
+  if (state.discardMode) {
+    // Toggle selection for discard
+    const idx = state.selectedCards.indexOf(card.id);
+    if (idx >= 0) {
+      state.selectedCards.splice(idx, 1);
+    } else if (state.selectedCards.length < state.discardCount) {
+      state.selectedCards.push(card.id);
+    }
+    renderHandCards();
+    renderActionBar();
+    return;
+  }
+
+  if (state.respondMode) {
+    if (isValidResponse(card)) {
+      state.selectedCard = state.selectedCard === card.id ? null : card.id;
+      renderHandCards();
+      renderActionBar();
+    }
+    return;
+  }
+
+  if (!isMyTurn() || state.currentPhase !== 'play') return;
+
+  if (state.selectedCard === card.id) {
+    // Deselect
+    state.selectedCard = null;
+    state.selectingTarget = false;
+    renderHandCards();
+    renderOtherPlayers();
+    renderActionBar();
+    return;
+  }
+
+  state.selectedCard = card.id;
+
+  // Check if card needs a target
+  if (cardNeedsTarget(card)) {
+    state.selectingTarget = true;
+  } else {
+    // Play immediately (equips, self-target cards, AOE)
+    send({ type: 'playCard', cardId: card.id });
+    state.selectedCard = null;
+    state.selectingTarget = false;
+  }
+
+  renderHandCards();
+  renderOtherPlayers();
+  renderActionBar();
+}
+
+function selectTarget(targetId) {
+  if (!state.selectingTarget || !state.selectedCard) return;
+  send({ type: 'playCard', cardId: state.selectedCard, targetId: targetId });
+  state.selectedCard = null;
+  state.selectingTarget = false;
+  renderHandCards();
+  renderOtherPlayers();
+  renderActionBar();
+}
+
+function cancelAction() {
+  state.selectedCard = null;
+  state.selectingTarget = false;
+  state.selectedCards = [];
+  renderHandCards();
+  renderOtherPlayers();
+  renderActionBar();
+}
+
+function endPlayPhase() {
+  send({ type: 'playCard', cardId: 'endPlay' }); // signal end phase
+  state.selectedCard = null;
+  state.selectingTarget = false;
+  renderActionBar();
+}
+
+function respondWithCard() {
+  if (!state.selectedCard) return;
+  send({ type: 'respond', cardId: state.selectedCard });
+  state.selectedCard = null;
+  state.respondMode = false;
+  state.respondType = '';
+  renderHandCards();
+  renderActionBar();
+}
+
+function respondPass() {
+  send({ type: 'respond', pass: true });
+  state.selectedCard = null;
+  state.respondMode = false;
+  state.respondType = '';
+  renderHandCards();
+  renderActionBar();
+}
+
+function confirmDiscard() {
+  if (state.selectedCards.length !== state.discardCount) return;
+  send({ type: 'discardCards', cardIds: state.selectedCards });
+  state.selectedCards = [];
+  state.discardMode = false;
+  state.discardCount = 0;
+  renderHandCards();
+  renderActionBar();
+}
+
+function sendChat() {
+  const input = document.getElementById('lobbyChatInput');
+  const text = input.value.trim();
+  if (!text) return;
+  send({ type: 'chat', text });
+  input.value = '';
+}
+
+function sendGameChat() {
+  const input = document.getElementById('gameChatInput');
+  const text = input.value.trim();
+  if (!text) return;
+  send({ type: 'chat', text });
+  input.value = '';
+}
+
+function backToLobby() {
+  hideModal('gameOverModal');
+  state.gameOver = false;
+  state.currentTurn = null;
+  state.currentPhase = '';
+  state.myCards = [];
+  state.selectedCard = null;
+  state.selectedCards = [];
+  showScreen('lobbyScreen');
+}
+
+function cardNeedsTarget(card) {
+  if (!card) return false;
+  if (card.name === '杀') return true;
+  // These trick cards need a specific target
+  const targetTricks = ['duel', 'snatch', 'dismantle', 'indulgence', 'borrowsword', 'fireattack'];
+  if (card.type === 'trick' && targetTricks.includes(card.subtype)) return true;
+  // Equipment, peach, dodge, AOE tricks (barbarian, arrowrain, peachgarden, draw2, lightning, nullify) don't need target
+  return false;
+}
+
+function isValidResponse(card) {
+  if (!card) return false;
+  if (state.respondType === 'dodge' && card.name === '闪') return true;
+  if (state.respondType === 'peach' && card.name === '桃') return true;
+  if (state.respondType === 'kill' && card.name === '杀') return true;
+  return false;
+}
+
+// === EVENT HANDLERS ===
+// (Integrated into game actions and HTML onclick attributes above)
+
+// === UTILITIES ===
+function factionColor(faction) {
+  if (!faction) return '#e0e0e0';
+  const f = faction.toLowerCase();
+  if (f === 'terran') return '#ff6600';
+  if (f === 'protoss') return '#00ccff';
+  if (f === 'zerg') return '#9900ff';
+  return '#e0e0e0';
+}
+function factionIcon(faction) {
+  if (!faction) return '';
+  const f = faction.toLowerCase();
+  if (f === 'terran') return '🔧';
+  if (f === 'protoss') return '⚡';
+  if (f === 'zerg') return '🦠';
+  return '';
+}
+function factionClass(faction) {
+  if (!faction) return '';
+  return faction.toLowerCase();
+}
+function suitSymbol(suit) {
+  const map = { spade: '♠', heart: '♥', diamond: '♦', club: '♣' };
+  return map[suit] || suit || '';
+}
+function suitIsRed(suit) {
+  return suit === 'heart' || suit === 'diamond';
+}
+function cardTypeClass(card) {
+  if (!card) return '';
+  if (card.type === 'basic') return 'type-basic';
+  if (card.type === 'trick') return 'type-trick';
+  if (card.type === 'equip' || card.type === 'equipment') return 'type-equip';
+  return '';
+}
+function cardGlowClass(card) {
+  if (!card) return '';
+  const n = card.name;
+  if (n === '杀') return 'card-sha';
+  if (n === '闪') return 'card-shan';
+  if (n === '桃') return 'card-tao';
+  if (card.type === 'trick') return 'card-trick';
+  if (card.subtype === 'weapon') return 'card-weapon';
+  if (card.subtype === 'armor') return 'card-armor';
+  if (card.subtype === 'horse' || card.subtype === 'plusHorse' || card.subtype === 'minusHorse') return 'card-horse';
+  return '';
+}
+function numberDisplay(num) {
+  const map = { 1:'A', 11:'J', 12:'Q', 13:'K' };
+  return map[num] || num || '';
+}
+function phaseNameCN(phase) {
+  const map = {
+    prepare: '准备阶段', judge: '判定阶段', draw: '摸牌阶段',
+    play: '出牌阶段', discard: '弃牌阶段', end: '结束阶段'
+  };
+  return map[phase] || phase || '';
+}
+function identityNameCN(identity) {
+  const map = {
+    commander: '主公/指挥官', loyalist: '忠臣/忠诚者', rebel: '反贼/叛军', spy: '内奸/间谍'
+  };
+  return map[identity] || identity || '未知';
+}
+function timeStr() {
+  const d = new Date();
+  return d.toTimeString().slice(0,8);
+}
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  const el = document.getElementById(id);
+  if (el) el.classList.add('active');
+}
+function showModal(id) {
+  const el = document.getElementById(id);
+  if (el) el.classList.add('active');
+}
+function hideModal(id) {
+  const el = document.getElementById(id);
+  if (el) el.classList.remove('active');
+}
+function showError(msg) {
+  const el = document.getElementById('loginError');
+  el.textContent = msg; el.style.display = 'block';
+  setTimeout(() => el.style.display = 'none', 4000);
+}
+function getPlayerById(id) {
+  return state.players.find(p => p.id === id);
+}
+function isMyTurn() {
+  return state.currentTurn === state.playerId;
+}
+
+// === INITIALIZATION ===
+function initStarfield() {
+  const sf = document.getElementById('starfield');
+  for (let i = 0; i < 150; i++) {
+    const star = document.createElement('div');
+    star.className = 'star';
+    const size = Math.random() * 2 + 1;
+    star.style.width = size + 'px';
+    star.style.height = size + 'px';
+    star.style.left = Math.random() * 100 + '%';
+    star.style.top = Math.random() * 100 + '%';
+    star.style.animationDelay = Math.random() * 5 + 's';
+    sf.appendChild(star);
+  }
+}
+
+function init() {
+  initStarfield();
+  document.getElementById('playerNameInput').addEventListener('keydown', e => {
+    if (e.key === 'Enter') createRoom();
+  });
+  document.getElementById('roomCodeInput').addEventListener('keydown', e => {
+    if (e.key === 'Enter') joinRoom();
+  });
+}
+
+document.addEventListener('DOMContentLoaded', init);
+
+</script>
+</body>
+</html>
